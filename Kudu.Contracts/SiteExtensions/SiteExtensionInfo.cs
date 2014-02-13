@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using NuGet;
 
 namespace Kudu.Contracts.SiteExtensions
 {
@@ -11,7 +14,7 @@ namespace Kudu.Contracts.SiteExtensions
             set;
         }
 
-        public string Name 
+        public string Title 
         { 
             get; 
             set; 
@@ -29,25 +32,31 @@ namespace Kudu.Contracts.SiteExtensions
             set;
         }
 
-        public SiteExtensionInfo Update
+        public bool IsLatestVersion
         {
             get;
             set;
         }
 
-        public Uri HRef
+        public Uri ProjectUrl
         {
             get;
             set;
         }
 
-        public string Author
+        public Uri IconUrl
+        {
+            get; 
+            set;
+        }
+
+        public IEnumerable<string> Authors
         {
             get;
             set;
         }
 
-        public DateTime PublishedDateTime
+        public DateTimeOffset? PublishedDateTime
         {
             get;
             set;
@@ -59,16 +68,49 @@ namespace Kudu.Contracts.SiteExtensions
             set;
         }
 
+        public int DownloadCount
+        {
+            get;
+            set;
+        }
+
         public string AppPath
         {
             get;
             set;
         }
 
-        public DateTime InstalledDateTime
+        public SiteExtensionInfo LatestInfo
+        {
+            get; 
+            set;
+        }
+
+        public DateTimeOffset? InstalledDateTime
         {
             get;
             set;
+        }
+
+        public static SiteExtensionInfo ConvertFrom(IPackage package)
+        {
+            return new SiteExtensionInfo
+            {
+                Id = package.Id,
+                Title = package.Title,
+                Description = package.Description,
+                Version = package.Version.ToString(),
+                ProjectUrl = package.ProjectUrl,
+                IconUrl = package.IconUrl,
+                LicenseUrl = package.LicenseUrl,
+                Authors = package.Authors,
+                PublishedDateTime = package.Published,
+                IsLatestVersion = package.IsLatestVersion,
+                DownloadCount = package.DownloadCount,
+                LatestInfo = null,
+                AppPath = null,
+                InstalledDateTime = null,
+            };
         }
     }
 }

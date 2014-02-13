@@ -16,9 +16,9 @@ namespace Kudu.Services.SiteExtensions
         }
 
         [HttpGet]
-        public async Task<IEnumerable<SiteExtensionInfo>> GetRemoteExtensions(string filter = null, string version = null)
+        public async Task<IEnumerable<SiteExtensionInfo>> GetRemoteExtensions(string filter = null, bool allowPrereleaseVersions = false)
         {
-            return await _manager.GetRemoteExtensions(filter, version);
+            return await _manager.GetRemoteExtensions(filter, allowPrereleaseVersions);
         }
 
         [HttpGet]
@@ -28,15 +28,15 @@ namespace Kudu.Services.SiteExtensions
         }
 
         [HttpGet]
-        public async Task<IEnumerable<SiteExtensionInfo>> GetLocalExtensions(string filter = null, bool update_info = true)
+        public async Task<IEnumerable<SiteExtensionInfo>> GetLocalExtensions(string filter = null, bool latestInfo = false)
         {
-            return await _manager.GetLocalExtensions(filter, update_info);
+            return await _manager.GetLocalExtensions(filter, latestInfo);
         }
 
         [HttpGet]
-        public async Task<SiteExtensionInfo> GetLocalExtension(string id, bool update_info = true)
+        public async Task<SiteExtensionInfo> GetLocalExtension(string id, bool latestInfo = false)
         {
-            return await _manager.GetLocalExtension(id, update_info);
+            return await _manager.GetLocalExtension(id, latestInfo);
         }
 
         [HttpPost]

@@ -1,0 +1,213 @@
+﻿@{
+    Layout = "~/_Layout.cshtml";
+    Page.Title = "Kudu Services - Site Extensions";
+    // class="img-thumbnail"
+}
+
+@section PageHead {
+    <style type="text/css">
+        img.icon {
+            height: 72px;
+            width: 72px;
+            display: inline-block;
+        }
+
+        .thumbnail {
+            text-align: center;
+        }
+
+        .fixed-height {
+            height: 300px;
+        }
+
+        .button-bottom-left1 {
+            position: absolute;
+            width: 70px;
+            left: 20px;
+            bottom: 25px;
+        }
+
+        .button-bottom-left2 {
+            position: absolute;
+            left: 100px;
+            bottom: 25px;
+        }
+
+        .button-bottom-right1 {
+            position: absolute;
+            right: 20px;
+            bottom: 25px;
+        }
+    </style>
+
+}
+
+<div class="container">
+    <div class="row navbar">
+        <div class="col-sm-6 col-md-4">
+            <ul class="nav nav-tabs" data-tabs="tabs">
+                <li class="active"><a data-toggle="tab" href="#gallery">Gallery</a></li>
+                <li><a data-toggle="tab" href="#installed">Installed</a></li>
+            </ul>
+        </div>
+        <div class="col-sm-6 col-md-8">
+            <form class="navbar-form" role="search">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="Site Extension">
+                </div>
+                <button type="submit" class="btn btn-default">Search</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="tab-content">
+            <div class="tab-pane active" id="gallery">
+                <div class="row" data-bind="foreach: gallery">
+                    <div class="col-sm-4 col-md-3">
+                        <div class="thumbnail fixed-height">
+                            <a href="#">
+                                <div data-bind="if: IconUrl"><img data-bind="attr: { src: IconUrl }, click: $parent.details" alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" /></div>
+                                <div data-bind="ifnot: IconUrl"><img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png" alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" data-bind="click: $parent.details" /></div>
+                            </a>
+                            <h4 class="" data-bind="text: Title"></h4>
+                            <p data-bind="text: Description"></p>
+                            <p>
+                                <a class="btn btn-primary button-bottom-left1" role="button" data-bind="click: $parent.install">Install</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane" id="installed">
+                <div class="row" data-bind="foreach: installed">
+                    <div class="col-sm-4 col-md-3">
+                        <div class="thumbnail fixed-height">
+                            <a href="#">
+                                <div data-bind="if: IconUrl"><img data-bind="attr: { src: IconUrl }, click: $parent.details" alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" /></div>
+                                <div data-bind="ifnot: IconUrl"><img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png" alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" data-bind="click: $parent.details" /></div>
+                            </a>
+                            <h4 class="" data-bind="text: Title"></h4>
+                            <p data-bind="text: Description"></p>
+                            <p>
+                                <a class="btn btn-primary button-bottom-left1" role="button" data-bind="click: $parent.install">Update</a>
+                                <a class="btn btn-primary button-bottom-right1" role="button" data-bind="click: $parent.remove">Remove</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" data-bind="with: detailedSiteExtension">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <div data-bind="if: IconUrl"><img data-bind="attr: { src: IconUrl }" alt="Icon" class="icon" /></div>
+                <div data-bind="ifnot: IconUrl"><img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png" alt="Icon" class="icon" /></div>
+                <h4 class="modal-title" id="detailsModalLabel" data-bind="text: Title"></h4>
+            </div>
+            <div class="modal-body" data-bind="with: detailedSiteExtension">
+                <strong>Authors</strong>
+                <p data-bind="text: Authors"></p>
+                <strong>Version</strong>
+                <p data-bind="text: Version"></p>
+                <strong>Description</strong>
+                <p data-bind="text: Description"></p>
+                <strong>License</strong>
+                <p data-bind="text: LicenseUrl"></p>
+                <strong>Published Time</strong>
+                <p data-bind="text: PublishedDateTime"></p>
+                <strong>ID</strong>
+                <p data-bind="text: Id"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jquery/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/knockout/knockout-2.2.1.js"></script>
+<script type="text/javascript" src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+
+<script type="text/javascript">
+    function ExtensionsViewModel() {
+        // Data
+        var self = this;
+        self.gallery = ko.observableArray([]);
+        self.installed = ko.observableArray([]);
+        self.detailedSiteExtension = ko.observable();
+
+        // Operations
+        self.populate = function () {
+            $.ajax({
+                type: "GET",
+                url: "/api/extensions/remote",
+                dataType: "json",
+                success: function (data) {
+                    self.gallery(data);
+                },
+                error: function (jqXhr, textStatus, errorThrown) {
+                    alert(textStatus + ": " + errorThrown);
+                }
+            });
+            $.ajax({
+                type: "GET",
+                url: "/api/extensions/local",
+                dataType: "json",
+                success: function (data) {
+                    self.installed(data);
+                },
+                error: function (jqXhr, textStatus, errorThrown) {
+                    alert(textStatus + ": " + errorThrown);
+                }
+            });
+        };
+
+        self.install = function (extension) {
+            $.ajax({
+                type: "POST",
+                url: "/api/extensions",
+                contentType: "application/json",
+                data: JSON.stringify(extension),
+                success: function () {
+                },
+                error: function (jqXhr, textStatus, errorThrown) {
+                    alert(textStatus + ": " + errorThrown);
+                },
+                complete: function () {
+                    self.populate();
+                }
+            });
+        };
+
+        self.remove = function (extension) {
+            $.ajax({
+                type: "DELETE",
+                url: "/api/extensions/local/" + extension.Id,
+                error: function (jqXhr, textStatus, errorThrown) {
+                    alert(textStatus + ": " + errorThrown);
+                },
+                complete: function () {
+                    self.populate();
+                }
+            });
+        };
+
+        self.details = function (extension) {
+            self.detailedSiteExtension(extension);
+        };
+
+        // Initialization
+        self.populate();
+    }
+
+    ko.applyBindings(new ExtensionsViewModel());
+</script>

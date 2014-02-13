@@ -16,7 +16,7 @@ namespace Kudu.Client.SiteExtensions
         {
         }
 
-        public async Task<IEnumerable<SiteExtensionInfo>> GetRemoteExtensions(string filter = null, string version = null)
+        public async Task<IEnumerable<SiteExtensionInfo>> GetRemoteExtensions(string filter = null, bool allowPrereleaseVersions = false)
         {
             var url = new StringBuilder(ServiceUrl);
             url.Append("remote");
@@ -30,12 +30,11 @@ namespace Kudu.Client.SiteExtensions
                 separator = '&';
             }
 
-            if (!String.IsNullOrEmpty(version))
+            if (allowPrereleaseVersions)
             {
                 url.Append(separator);
-                url.Append("filter=");
-                url.Append(filter);
-                separator = '&';
+                url.Append("allowPrereleaseVersions=");
+                url.Append(true);
             }
 
             return await Client.GetJsonAsync<IEnumerable<SiteExtensionInfo>>(url.ToString());
@@ -56,7 +55,7 @@ namespace Kudu.Client.SiteExtensions
             return await Client.GetJsonAsync<SiteExtensionInfo>(url.ToString());
         }
 
-        public async Task<IEnumerable<SiteExtensionInfo>> GetLocalExtensions(string filter = null, bool update_info = true)
+        public async Task<IEnumerable<SiteExtensionInfo>> GetLocalExtensions(string filter = null, bool latestInfo = false)
         {
             var url = new StringBuilder(ServiceUrl);
             url.Append("local");
@@ -70,27 +69,27 @@ namespace Kudu.Client.SiteExtensions
                 separator = '&';
             }
 
-            if (!update_info)
+            if (latestInfo)
             {
                 url.Append(separator);
-                url.Append("update_info=");
-                url.Append(update_info);
+                url.Append("latestInfo=");
+                url.Append(latestInfo);
                 separator = '&';
             }
 
             return await Client.GetJsonAsync<IEnumerable<SiteExtensionInfo>>(url.ToString());
         }
 
-        public async Task<SiteExtensionInfo> GetLocalExtension(string id, bool update_info = true)
+        public async Task<SiteExtensionInfo> GetLocalExtension(string id, bool latestInfo = false)
         {
             var url = new StringBuilder(ServiceUrl);
             url.Append("local/");
             url.Append(id);
 
-            if (!update_info)
+            if (latestInfo)
             {
-                url.Append("?update_info=");
-                url.Append(update_info);
+                url.Append("?latestInfo=");
+                url.Append(latestInfo);
             }
             
             return await Client.GetJsonAsync<SiteExtensionInfo>(url.ToString());
