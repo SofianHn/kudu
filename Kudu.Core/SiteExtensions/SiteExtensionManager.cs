@@ -81,19 +81,22 @@ namespace Kudu.Core.SiteExtensions
             // Directory where _localRepository.AddPackage would use.
             var installationDirectory = GetInstallationDirectory(package);
 
-            foreach (var file in package.GetFiles())
+            OperationManager.Attempt(() =>
             {
-                var fullPath = Path.Combine(installationDirectory, file.Path);
-                FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
-                using (Stream writeStream = File.OpenWrite(fullPath),
-                    readStream = file.GetStream())
+                foreach (var file in package.GetFiles())
                 {
-                    readStream.CopyTo(writeStream);
+                    var fullPath = Path.Combine(installationDirectory, file.Path);
+                    FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
+                    using (Stream writeStream = File.OpenWrite(fullPath),
+                        readStream = file.GetStream())
+                    {
+                        readStream.CopyTo(writeStream);
+                    }
                 }
-            }
 
-            // For package list/lookup
-            _localRepository.AddPackage(package);
+                // For package list/lookup
+                _localRepository.AddPackage(package);
+            });
 
             return SiteExtensionInfo.ConvertFrom(package);
         }
