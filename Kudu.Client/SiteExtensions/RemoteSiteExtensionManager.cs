@@ -9,7 +9,7 @@ using Kudu.Contracts.SiteExtensions;
 
 namespace Kudu.Client.SiteExtensions
 {
-    public class RemoteSiteExtensionManager : KuduRemoteClientBase, ISiteExtensionManager
+    public class RemoteSiteExtensionManager : KuduRemoteClientBase
     {
         public RemoteSiteExtensionManager(string serviceUrl, ICredentials credentials = null, HttpMessageHandler handler = null)
             : base(serviceUrl, credentials, handler)
