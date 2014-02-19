@@ -19,20 +19,14 @@
             height: 300px;
         }
 
-        .button-bottom-left1 {
+        .button-bottom-left {
             position: absolute;
             width: 70px;
             left: 20px;
             bottom: 25px;
         }
 
-        .button-bottom-left2 {
-            position: absolute;
-            left: 100px;
-            bottom: 25px;
-        }
-
-        .button-bottom-right1 {
+        .button-bottom-right {
             position: absolute;
             right: 20px;
             bottom: 25px;
@@ -42,13 +36,14 @@
 
 <div class="container">
     <div class="row navbar">
-        <div class="col-sm-4 col-md-3">
+        <div class="col-sm-6 col-md-4" id="tabHeadings">
             <ul class="nav nav-tabs" data-tabs="tabs">
                 <li class="active"><a data-toggle="tab" href="#gallery">Gallery</a></li>
                 <li><a data-toggle="tab" href="#installed">Installed</a></li>
+                <li><a data-toggle="tab" href="#update">Update</a></li>
             </ul>
         </div>
-        <div class="col-sm-4 col-md-6">
+        <div class="col-sm-6 col-md-5" id="searchBox">
             <form class="navbar-form" role="search">
                 <div class="form-group has-feedback">
                     <input type="text" class="form-control" data-bind="value: searchTerms" placeholder="Site Extension">
@@ -75,7 +70,7 @@
                             <h4 class="" data-bind="text: Title"></h4>
                             <p data-bind="text: Description"></p>
                             <p>
-                                <a class="btn btn-primary button-bottom-left1" role="button" data-bind="click: $parent.install">Install</a>
+                                <a class="btn btn-primary button-bottom-left" role="button" data-bind="click: $parent.install">Install</a>
                             </p>
                         </div>
                     </div>
@@ -84,20 +79,49 @@
 
             <div class="tab-pane" id="installed">
                 <div class="row" data-bind="foreach: installed">
-                    <div class="col-sm-4 col-md-3">
+                    <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
                         <div class="thumbnail fixed-height">
                             <a href="#">
-                                <div data-bind="if: IconUrl"><img data-bind="attr: { src: IconUrl }, click: $parent.details" 
-                                                                  alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" /></div>
-                                <div data-bind="ifnot: IconUrl"><img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png" 
-                                                                     alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" 
-                                                                     data-bind="click: $parent.details" /></div>
+                                <div data-bind="if: IconUrl">
+                                    <img data-bind="attr: { src: IconUrl }, click: $parent.details"
+                                         alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" />
+                                </div>
+                                <div data-bind="ifnot: IconUrl">
+                                    <img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png"
+                                         alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal"
+                                         data-bind="click: $parent.details" />
+                                </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
                             <p data-bind="text: Description"></p>
                             <p>
-                                <a class="btn btn-primary button-bottom-left1" role="button" data-bind="attr: {href : '/' + Id}" >Lauch</a>
-                                <a class="btn btn-primary button-bottom-right1" role="button" data-bind="click: $parent.remove">Remove</a>
+                                <a class="btn btn-primary button-bottom-left" role="button" data-bind="attr: {href : '/' + Id}">Lauch</a>
+                                <a class="btn btn-primary button-bottom-right" role="button" data-bind="click: $parent.remove">Remove</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane" id="update">
+                <div class="row" data-bind="foreach: updates">
+                    <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="thumbnail fixed-height">
+                            <a href="#">
+                                <div data-bind="if: IconUrl">
+                                    <img data-bind="attr: { src: IconUrl }, click: $parent.details"
+                                         alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" />
+                                </div>
+                                <div data-bind="ifnot: IconUrl">
+                                    <img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png"
+                                         alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal"
+                                         data-bind="click: $parent.details" />
+                                </div>
+                            </a>
+                            <h4 class="" data-bind="text: Title"></h4>
+                            <p data-bind="text: Description"></p>
+                            <p>
+                                <a class="btn btn-primary button-bottom-left" role="button" data-bind="click: $parent.update">Update</a>
                             </p>
                         </div>
                     </div>
@@ -149,6 +173,7 @@
         var self = this;
         self.gallery = ko.observableArray([]);
         self.installed = ko.observableArray([]);
+        self.updates = ko.observableArray([]);
         self.detailedSiteExtension = ko.observable();
         self.searchTerms = ko.observable("");
         self.activeTab = ko.observable("gallery");
@@ -175,6 +200,7 @@
                 dataType: "json",
                 success: function (data) {
                     self.installed(data);
+                    self.updates(data.filter(function (item) { return !item.IsLatestVersion; }));
                 },
                 error: function (jqXhr, textStatus, errorThrown) {
                     alert(textStatus + ": " + errorThrown);
@@ -229,6 +255,11 @@
                     self.populateActiveTab();
                 }
             });
+        };
+
+        self.update = function(extension) {
+            self.remove(extension);
+            self.install(extension);
         };
 
         self.details = function (extension) {
