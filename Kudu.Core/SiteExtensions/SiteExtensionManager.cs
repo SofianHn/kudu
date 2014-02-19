@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
 using Kudu.Contracts.SiteExtensions;
 using Kudu.Core.Infrastructure;
 using NuGet;
@@ -16,12 +13,10 @@ namespace Kudu.Core.SiteExtensions
         private static readonly Uri _remoteSource = new Uri("http://siteextensions.azurewebsites.net/api/v2/");
         private readonly IPackageRepository _remoteRepository = new DataServicePackageRepository(_remoteSource);
         private readonly IPackageRepository _localRepository;
-        private readonly IEnvironment _environment;
 
         public SiteExtensionManager(IEnvironment environment)
         {
-            _environment = environment;
-            _localRepository = new LocalPackageRepository(_environment.RootPath + "\\SiteExtensions");
+            _localRepository = new LocalPackageRepository(environment.RootPath + "\\SiteExtensions");
         }
 
         public IEnumerable<SiteExtensionInfo> GetRemoteExtensions(string filter, bool allowPrereleaseVersions = false)
@@ -75,7 +70,6 @@ namespace Kudu.Core.SiteExtensions
 
         public SiteExtensionInfo InstallExtension(string id)
         {
-
             IPackage package = _remoteRepository.FindPackage(id);
 
             // Directory where _localRepository.AddPackage would use.
