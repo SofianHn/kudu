@@ -30,8 +30,10 @@ namespace Kudu.Core.SiteExtensions
                                         .Select(SiteExtensionInfo.ConvertFrom);
             }
 
-            return _remoteRepository.Search(filter, allowPrereleaseVersions).AsEnumerable()
-                                          .Select(SiteExtensionInfo.ConvertFrom);
+            return _remoteRepository.Search(filter, allowPrereleaseVersions)
+                                    .Where(p => p.IsLatestVersion)
+                                    .AsEnumerable()
+                                    .Select(SiteExtensionInfo.ConvertFrom);
         }
 
         public SiteExtensionInfo GetRemoteExtension(string id, string version)
@@ -42,8 +44,9 @@ namespace Kudu.Core.SiteExtensions
 
         public IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool latestInfo = false)
         {
-            var siteExtensionInfoList = _localRepository.Search(filter, true).AsEnumerable()
-                    .Select(SiteExtensionInfo.ConvertFrom);
+            var siteExtensionInfoList = _localRepository.Search(filter, false)
+                                                        .AsEnumerable()
+                                                        .Select(SiteExtensionInfo.ConvertFrom);
 
             if (latestInfo)
             {
@@ -56,10 +59,12 @@ namespace Kudu.Core.SiteExtensions
         public SiteExtensionInfo GetLocalExtension(string id, bool latestInfo = false)
         {
             var info = SiteExtensionInfo.ConvertFrom(_localRepository.FindPackage(id));
+
             if (latestInfo)
             {
                 info.LatestInfo = GetLatestInfo(info.Id);
             }
+
             return info;
         }
 
@@ -79,9 +84,11 @@ namespace Kudu.Core.SiteExtensions
             {
                 foreach (var file in package.GetFiles())
                 {
-                    var fullPath = Path.Combine(installationDirectory, file.Path);
+                    // It is necessary to place applicationHost.xdt under site extension root.
+                    string pathWithoutContextPrefix = file.Path.Substring("content/".Length);
+                    var fullPath = Path.Combine(installationDirectory, pathWithoutContextPrefix);
                     FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
-                    using (Stream writeStream = File.OpenWrite(fullPath),
+                    using (Stream writeStream = File.OpenWrite(fullPath), 
                         readStream = file.GetStream())
                     {
                         readStream.CopyTo(writeStream);
