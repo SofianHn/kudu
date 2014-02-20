@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using Kudu.Contracts.SiteExtensions;
 using Kudu.Core.Infrastructure;
 using NuGet;
@@ -99,6 +100,14 @@ namespace Kudu.Core.SiteExtensions
                 _localRepository.AddPackage(package);
             });
 
+            // If there is no xdt file, generate a default one
+            string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
+            if (!File.Exists(xdtPath))
+            {
+                var xdtTemplate = CreateDefaultXdtTemplate(package.Id);
+                xdtTemplate.Save(xdtPath);
+            }
+
             return SiteExtensionInfo.ConvertFrom(package);
         }
 
@@ -118,6 +127,24 @@ namespace Kudu.Core.SiteExtensions
         private string GetInstallationDirectory(IPackageName package)
         {
             return _localRepository.Source + "\\" + package.Id + "." + package.Version;
+        }
+
+        private static XElement CreateDefaultXdtTemplate(string id)
+        {
+            XNamespace xdt = "http://schemas.microsoft.com/XML-Document-Transform";
+
+            return new XElement("configuration", new XAttribute(XNamespace.Xmlns + "xdt", xdt),
+                new XElement("system.applicationHost",
+                    new XElement("sites",
+                        new XElement("site", new XAttribute("name", "%XDT_SCMSITENAME%"), new XAttribute(xdt + "Locator", "Match(name)"),
+                            new XElement("application", new XAttribute("path", "/" + id),
+                                new XAttribute(xdt + "Locator", "Match(path)"),
+                                new XAttribute(xdt + "Transform", "Remove")),
+                           new XElement("application", new XAttribute("path", "/" + id),
+                               new XAttribute("applicationPool", "%XDT_APPPOOLNAME%"),
+                               new XAttribute(xdt + "Transform", "Insert"),
+                               new XElement("virtualDirectory", new XAttribute("path", "/"),
+                                   new XAttribute("physicalPath", "%XDT_EXTENSIONPATH%")))))));
         }
     }
 }
