@@ -13,10 +13,11 @@
 
         .thumbnail {
             text-align: center;
+            height: 300px;
         }
 
         .fixed-height {
-            height: 300px;
+            
         }
 
         .button-bottom-left {
@@ -58,14 +59,18 @@
         <div class="tab-content">
             <div class="tab-pane active" id="gallery">
                 <div class="row" data-bind="foreach: gallery">
-                    <div class="col-sm-4 col-md-3">
-                        <div class="thumbnail fixed-height">
+                    <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                        <div class="thumbnail" id="tile1">
                             <a href="#">
-                                <div data-bind="if: IconUrl"><img data-bind="attr: { src: IconUrl }, click: $parent.details" 
-                                                                  alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" /></div>
-                                <div data-bind="ifnot: IconUrl"><img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png" 
-                                                                     alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" 
-                                                                     data-bind="click: $parent.details" /></div>
+                                <div data-bind="if: IconUrl">
+                                    <img data-bind="attr: { src: IconUrl }, click: $parent.details"
+                                         alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal" />
+                                </div>
+                                <div data-bind="ifnot: IconUrl">
+                                    <img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png"
+                                         alt="Icon" class="icon" data-toggle="modal" data-target="#detailsModal"
+                                         data-bind="click: $parent.details" />
+                                </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
                             <p data-bind="text: Description"></p>
@@ -79,8 +84,8 @@
 
             <div class="tab-pane" id="installed">
                 <div class="row" data-bind="foreach: installed">
-                    <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-                        <div class="thumbnail fixed-height">
+                    <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                        <div class="thumbnail" id="tile2">
                             <a href="#">
                                 <div data-bind="if: IconUrl">
                                     <img data-bind="attr: { src: IconUrl }, click: $parent.details"
@@ -105,8 +110,8 @@
             
             <div class="tab-pane" id="update">
                 <div class="row" data-bind="foreach: updates">
-                    <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-                        <div class="thumbnail fixed-height">
+                    <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                        <div class="thumbnail" id="tile3">
                             <a href="#">
                                 <div data-bind="if: IconUrl">
                                     <img data-bind="attr: { src: IconUrl }, click: $parent.details"
@@ -168,6 +173,12 @@
 <script type="text/javascript" src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
 
 <script type="text/javascript">
+    
+    // UI
+    var tiles = $("#tile1, #tile2, #tile3");
+    tiles.height(tiles.width() * 1.6);
+
+    // Knockout View Model
     function ExtensionsViewModel() {
         // Data
         var self = this;
