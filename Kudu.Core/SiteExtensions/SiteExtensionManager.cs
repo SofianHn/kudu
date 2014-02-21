@@ -22,92 +22,106 @@ namespace Kudu.Core.SiteExtensions
 
         public IEnumerable<SiteExtensionInfo> GetRemoteExtensions(string filter, bool allowPrereleaseVersions = false)
         {
+            IQueryable<IPackage> packages;
+
             if (String.IsNullOrEmpty(filter))
             {
-                return _remoteRepository.GetPackages()
-                                        .Where(p => p.IsLatestVersion)
-                                        .OrderByDescending(f => f.DownloadCount)
-                                        .AsEnumerable()
-                                        .Select(ConvertPackageToSiteExtensionInfo);
+                packages = _remoteRepository.GetPackages()
+                    .Where(p => p.IsLatestVersion)
+                    .OrderByDescending(p => p.DownloadCount);
+            }
+            else
+            {
+                packages = _remoteRepository.Search(filter, allowPrereleaseVersions)
+                    .Where(p => p.IsLatestVersion);
             }
 
-            return _remoteRepository.Search(filter, allowPrereleaseVersions)
-                                    .Where(p => p.IsLatestVersion)
-                                    .AsEnumerable()
-                                    .Select(ConvertPackageToSiteExtensionInfo);
+            return packages.AsEnumerable()
+                           .Select(ConvertPackageToSiteExtensionInfo);
         }
 
         public SiteExtensionInfo GetRemoteExtension(string id, string version)
         {
             var semanticVersion = version == null ? null : new SemanticVersion(version);
-            return ConvertPackageToSiteExtensionInfo(_remoteRepository.FindPackage(id, semanticVersion));
+            var package = _remoteRepository.FindPackage(id, semanticVersion);
+            if (package == null)
+            {
+                return null;
+            }
+
+            return ConvertPackageToSiteExtensionInfo(package);
         }
 
-        public IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool latestInfo = false)
+        public IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool checkLatest = true)
         {
             var siteExtensionInfoList = _localRepository.Search(filter, false)
                                                         .AsEnumerable()
-                                                        .Select(ConvertLocalPackageToSiteExtensionInfo);
-
-            if (latestInfo)
-            {
-                siteExtensionInfoList = siteExtensionInfoList.Select(info => info.LatestInfo = GetLatestInfo(info.Id));
-            }
+                                                        .Select(info => ConvertLocalPackageToSiteExtensionInfo(info, checkLatest));
 
             return siteExtensionInfoList;
         }
 
-        public SiteExtensionInfo GetLocalExtension(string id, bool latestInfo = false)
+        public SiteExtensionInfo GetLocalExtension(string id, bool checkLatest = true)
         {
-            var info = ConvertPackageToSiteExtensionInfo(_localRepository.FindPackage(id));
-
-            if (latestInfo)
+            var package = _localRepository.FindPackage(id);
+            if (package == null)
             {
-                info.LatestInfo = GetLatestInfo(info.Id);
+                return null;
             }
 
-            return info;
+            return ConvertLocalPackageToSiteExtensionInfo(package, checkLatest);
         }
 
         public SiteExtensionInfo InstallExtension(SiteExtensionInfo info)
         {
-            return InstallExtension(info.Id);
+            return info == null ? null : InstallExtension(info.Id);
         }
 
         public SiteExtensionInfo InstallExtension(string id)
         {
+            if (String.IsNullOrEmpty(id))
+            {
+                return null;
+            }
+
             IPackage package = _remoteRepository.FindPackage(id);
+            if (package == null)
+            {
+                return null;
+            }
 
             // Directory where _localRepository.AddPackage would use.
             string installationDirectory = GetInstallationDirectory(id);
 
-            OperationManager.Attempt(() =>
-            {
-                if (FileSystemHelpers.DirectoryExists(installationDirectory))
-                {
-                    FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
-                }
+            bool success = OperationManager.Attempt(() => InstallExtension(package, installationDirectory));
 
-                // Copy nupkg file for package list/lookup
-                FileSystemHelpers.CreateDirectory(installationDirectory);
-                var packageFilePath = Path.Combine(installationDirectory, String.Format("{0}.{1}.nupkg", package.Id, package.Version));
-                using (Stream readStream = package.GetStream(), writeStream = FileSystemHelpers.OpenWrite(packageFilePath))
+            if (success)
+            {
+                return ConvertPackageToSiteExtensionInfo(package);
+            }
+
+            FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+            return null;
+        }
+
+        public bool InstallExtension(IPackage package, string installationDirectory)
+        {
+            if (FileSystemHelpers.DirectoryExists(installationDirectory))
+            {
+                FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+            }
+
+            foreach (var file in package.GetContentFiles())
+            {
+                // It is necessary to place applicationHost.xdt under site extension root.
+                string contentFilePath = file.Path.Substring("content/".Length);
+                var fullPath = Path.Combine(installationDirectory, contentFilePath);
+                FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
+                using (Stream writeStream = FileSystemHelpers.OpenWrite(fullPath), readStream = file.GetStream())
                 {
                     readStream.CopyTo(writeStream);
                 }
-
-                foreach (var file in package.GetContentFiles())
-                {
-                    // It is necessary to place applicationHost.xdt under site extension root.
-                    string contentFilePath = file.Path.Substring("content/".Length);
-                    var fullPath = Path.Combine(installationDirectory, contentFilePath);
-                    FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
-                    using (Stream writeStream = FileSystemHelpers.OpenWrite(fullPath), readStream = file.GetStream())
-                    {
-                        readStream.CopyTo(writeStream);
-                    }
-                }
-            });
+            }
 
             // If there is no xdt file, generate default.
             string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
@@ -117,24 +131,39 @@ namespace Kudu.Core.SiteExtensions
                 xdtTemplate.Save(xdtPath);
             }
 
-            return ConvertPackageToSiteExtensionInfo(package);
+            // Copy nupkg file for package list/lookup
+            FileSystemHelpers.CreateDirectory(installationDirectory);
+            var packageFilePath = Path.Combine(installationDirectory, String.Format("{0}.{1}.nupkg", package.Id, package.Version));
+            using (Stream readStream = package.GetStream(), writeStream = FileSystemHelpers.OpenWrite(packageFilePath))
+            {
+                readStream.CopyTo(writeStream);
+            }
+
+            return true;
         }
 
         public bool UninstallExtension(string id)
         {
+            if (String.IsNullOrEmpty(id))
+            {
+                return true;
+            }
+
             string installationDirectory = GetInstallationDirectory(id);
-            FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+
+            OperationManager.Attempt(() => FileSystemHelpers.DeleteDirectorySafe(installationDirectory));
+            
             return !FileSystemHelpers.DirectoryExists(installationDirectory);
         }
 
         public string GetInstallationDirectory(string id)
         {
-            return Path.Combine(_localRepository.Source, id);
-        }
+            if (String.IsNullOrEmpty(id))
+            {
+                return null;
+            }
 
-        private SiteExtensionInfo GetLatestInfo(string id)
-        {
-            return ConvertPackageToSiteExtensionInfo(_remoteRepository.FindPackage(id));
+            return Path.Combine(_localRepository.Source, id);
         }
 
         private static XElement CreateDefaultXdtTemplate(string id)
@@ -170,17 +199,21 @@ namespace Kudu.Core.SiteExtensions
                 PublishedDateTime = package.Published,
                 IsLatestVersion = package.IsLatestVersion,
                 DownloadCount = package.DownloadCount,
-                LatestInfo = null,
                 AppPath = null,
                 InstalledDateTime = null,
             };
         }
 
-        public SiteExtensionInfo ConvertLocalPackageToSiteExtensionInfo(IPackage package)
+        public SiteExtensionInfo ConvertLocalPackageToSiteExtensionInfo(IPackage package, bool checkLatest = true)
         {
             SiteExtensionInfo info = ConvertPackageToSiteExtensionInfo(package);
-            IPackage latestPackage = _remoteRepository.FindPackage(info.Id);
-            info.IsLatestVersion = package.Version == latestPackage.Version;
+
+            if (checkLatest)
+            {
+                IPackage latestPackage = _remoteRepository.FindPackage(info.Id);
+                info.IsLatestVersion = package.Version == latestPackage.Version;
+            }
+
             return info;
         }
     }

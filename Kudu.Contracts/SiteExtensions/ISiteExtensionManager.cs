@@ -11,9 +11,9 @@ namespace Kudu.Contracts.SiteExtensions
 
         SiteExtensionInfo GetRemoteExtension(string id, string version);
 
-        IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool latestInfo);
+        IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool checkLatest);
 
-        SiteExtensionInfo GetLocalExtension(string id, bool latestInfo);
+        SiteExtensionInfo GetLocalExtension(string id, bool checkLatest);
 
         SiteExtensionInfo InstallExtension(SiteExtensionInfo info);
 

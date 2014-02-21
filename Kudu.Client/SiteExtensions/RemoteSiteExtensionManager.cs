@@ -55,7 +55,7 @@ namespace Kudu.Client.SiteExtensions
             return await Client.GetJsonAsync<SiteExtensionInfo>(url.ToString());
         }
 
-        public async Task<IEnumerable<SiteExtensionInfo>> GetLocalExtensions(string filter = null, bool latestInfo = false)
+        public async Task<IEnumerable<SiteExtensionInfo>> GetLocalExtensions(string filter = null, bool checkLatest = true)
         {
             var url = new StringBuilder(ServiceUrl);
             url.Append("local");
@@ -69,27 +69,27 @@ namespace Kudu.Client.SiteExtensions
                 separator = '&';
             }
 
-            if (latestInfo)
+            if (checkLatest)
             {
                 url.Append(separator);
-                url.Append("latestInfo=");
-                url.Append(latestInfo);
+                url.Append("checkLatest=");
+                url.Append(checkLatest);
                 separator = '&';
             }
 
             return await Client.GetJsonAsync<IEnumerable<SiteExtensionInfo>>(url.ToString());
         }
 
-        public async Task<SiteExtensionInfo> GetLocalExtension(string id, bool latestInfo = false)
+        public async Task<SiteExtensionInfo> GetLocalExtension(string id, bool checkLatest = true)
         {
             var url = new StringBuilder(ServiceUrl);
             url.Append("local/");
             url.Append(id);
 
-            if (latestInfo)
+            if (checkLatest)
             {
-                url.Append("?latestInfo=");
-                url.Append(latestInfo);
+                url.Append("?checkLatest=");
+                url.Append(checkLatest);
             }
             
             return await Client.GetJsonAsync<SiteExtensionInfo>(url.ToString());

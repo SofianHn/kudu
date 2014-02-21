@@ -78,12 +78,6 @@ namespace Kudu.Contracts.SiteExtensions
             set;
         }
 
-        public SiteExtensionInfo LatestInfo
-        {
-            get; 
-            set;
-        }
-
         public DateTimeOffset? InstalledDateTime
         {
             get;
