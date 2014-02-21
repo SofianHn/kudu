@@ -39,20 +39,25 @@
 
 <div class="container">
     <div class="row navbar">
-        <div class="col-sm-6 col-md-4" id="tabHeadings">
+        <div class="col-sm-6 col-md-3" id="tabHeadings">
             <ul class="nav nav-tabs" data-tabs="tabs">
                 <li class="active"><a data-toggle="tab" href="#gallery">Gallery</a></li>
                 <li><a data-toggle="tab" href="#installed">Installed</a></li>
                 <li><a data-toggle="tab" href="#update">Update</a></li>
             </ul>
         </div>
-        <div class="col-sm-6 col-md-5" id="searchBox">
+        <div class="col-sm-6 col-md-4" id="searchBox">
             <form class="navbar-form" role="search">
                 <div class="form-group has-feedback">
                     <input type="text" class="form-control" data-bind="value: searchTerms" placeholder="Site Extension">
                 </div>
                 <button type="button" class="btn btn-default" data-bind="click: populateAllTabs">Search</button>
                 <button type="button" class="btn btn-default" data-bind="click: clearSearch">Clear</button>
+            </form>
+        </div>
+        <div class="col-sm-6 col-md-5 na" id="restartButton">
+            <form class="navbar-form">
+                <button type="button" class="btn btn-default" onclick="sendRestartRequest()">Restart Site</button>
             </form>
         </div>
     </div>
@@ -109,7 +114,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="tab-pane" id="update">
                 <div class="row" data-bind="foreach: updates">
                     <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
@@ -145,8 +150,10 @@
             <div class="modal-header" data-bind="with: detailedSiteExtension">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                 <div data-bind="if: IconUrl"><img data-bind="attr: { src: IconUrl }" alt="Icon" class="icon" /></div>
-                <div data-bind="ifnot: IconUrl"><img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png" 
-                                                     alt="Icon" class="icon" /></div>
+                <div data-bind="ifnot: IconUrl">
+                    <img src="http://siteextensions.azurewebsites.net/Content/Images/packageDefaultIcon.png"
+                         alt="Icon" class="icon" />
+                </div>
                 <h4 class="modal-title" id="detailsModalLabel" data-bind="text: Title"></h4>
             </div>
             <div class="modal-body" data-bind="with: detailedSiteExtension">
@@ -177,10 +184,20 @@
 <script type="text/javascript" src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
 
 <script type="text/javascript">
-    
+
     // UI
     var tiles = $("#tile1, #tile2, #tile3");
     tiles.height(tiles.width() * 1.6);
+
+    function sendRestartRequest() {
+        $.ajax({
+            type: "DELETE",
+            url: "/diagnostics/processes/0",
+            error: function () {
+                // no op
+            }
+        });
+    };
 
     // Knockout View Model
     function ExtensionsViewModel() {
@@ -194,15 +211,15 @@
         self.activeTab = ko.observable("gallery");
 
         // Operations
-        self.populateGallery = function(filter) {
+        self.populateGallery = function (filter) {
             $.ajax({
                 type: "GET",
-                url: "/api/extensions/remote?" + $.param({ "filter" : filter }),
+                url: "/api/extensions/remote?" + $.param({ "filter": filter }),
                 dataType: "json",
-                success: function(data) {
+                success: function (data) {
                     self.gallery(data);
                 },
-                error: function(jqXhr, textStatus, errorThrown) {
+                error: function (jqXhr, textStatus, errorThrown) {
                     alert(textStatus + ": " + errorThrown);
                 }
             });
@@ -211,7 +228,7 @@
         self.populateInstalled = function (filter) {
             $.ajax({
                 type: "GET",
-                url: "/api/extensions/local?" + $.param({ "filter" : filter }),
+                url: "/api/extensions/local?" + $.param({ "filter": filter }),
                 dataType: "json",
                 success: function (data) {
                     self.installed(data);
@@ -237,7 +254,7 @@
             self.populateInstalled(self.searchTerms);
         };
 
-        self.clearSearch = function() {
+        self.clearSearch = function () {
             self.searchTerms("");
             self.populateAllTabs();
         };
@@ -272,7 +289,7 @@
             });
         };
 
-        self.update = function(extension) {
+        self.update = function (extension) {
             self.remove(extension);
             self.install(extension);
         };
