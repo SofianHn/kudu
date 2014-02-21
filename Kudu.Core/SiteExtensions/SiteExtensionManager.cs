@@ -28,26 +28,26 @@ namespace Kudu.Core.SiteExtensions
                                         .Where(p => p.IsLatestVersion)
                                         .OrderByDescending(f => f.DownloadCount)
                                         .AsEnumerable()
-                                        .Select(SiteExtensionInfo.ConvertFrom);
+                                        .Select(ConvertPackageToSiteExtensionInfo);
             }
 
             return _remoteRepository.Search(filter, allowPrereleaseVersions)
                                     .Where(p => p.IsLatestVersion)
                                     .AsEnumerable()
-                                    .Select(SiteExtensionInfo.ConvertFrom);
+                                    .Select(ConvertPackageToSiteExtensionInfo);
         }
 
         public SiteExtensionInfo GetRemoteExtension(string id, string version)
         {
             var semanticVersion = version == null ? null : new SemanticVersion(version);
-            return SiteExtensionInfo.ConvertFrom(_remoteRepository.FindPackage(id, semanticVersion));
+            return ConvertPackageToSiteExtensionInfo(_remoteRepository.FindPackage(id, semanticVersion));
         }
 
         public IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool latestInfo = false)
         {
             var siteExtensionInfoList = _localRepository.Search(filter, false)
                                                         .AsEnumerable()
-                                                        .Select(SiteExtensionInfo.ConvertFrom);
+                                                        .Select(ConvertLocalPackageToSiteExtensionInfo);
 
             if (latestInfo)
             {
@@ -59,7 +59,7 @@ namespace Kudu.Core.SiteExtensions
 
         public SiteExtensionInfo GetLocalExtension(string id, bool latestInfo = false)
         {
-            var info = SiteExtensionInfo.ConvertFrom(_localRepository.FindPackage(id));
+            var info = ConvertPackageToSiteExtensionInfo(_localRepository.FindPackage(id));
 
             if (latestInfo)
             {
@@ -79,28 +79,37 @@ namespace Kudu.Core.SiteExtensions
             IPackage package = _remoteRepository.FindPackage(id);
 
             // Directory where _localRepository.AddPackage would use.
-            var installationDirectory = GetInstallationDirectory(package);
+            string installationDirectory = GetInstallationDirectory(id);
 
             OperationManager.Attempt(() =>
             {
-                foreach (var file in package.GetFiles())
+                if (FileSystemHelpers.DirectoryExists(installationDirectory))
+                {
+                    FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+                }
+
+                // Copy nupkg file for package list/lookup
+                FileSystemHelpers.CreateDirectory(installationDirectory);
+                var packageFilePath = Path.Combine(installationDirectory, String.Format("{0}.{1}.nupkg", package.Id, package.Version));
+                using (Stream readStream = package.GetStream(), writeStream = FileSystemHelpers.OpenWrite(packageFilePath))
+                {
+                    readStream.CopyTo(writeStream);
+                }
+
+                foreach (var file in package.GetContentFiles())
                 {
                     // It is necessary to place applicationHost.xdt under site extension root.
-                    string pathWithoutContextPrefix = file.Path.Substring("content/".Length);
-                    var fullPath = Path.Combine(installationDirectory, pathWithoutContextPrefix);
+                    string contentFilePath = file.Path.Substring("content/".Length);
+                    var fullPath = Path.Combine(installationDirectory, contentFilePath);
                     FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
-                    using (Stream writeStream = File.OpenWrite(fullPath), 
-                        readStream = file.GetStream())
+                    using (Stream writeStream = FileSystemHelpers.OpenWrite(fullPath), readStream = file.GetStream())
                     {
                         readStream.CopyTo(writeStream);
                     }
                 }
-
-                // For package list/lookup
-                _localRepository.AddPackage(package);
             });
 
-            // If there is no xdt file, generate a default one
+            // If there is no xdt file, generate default.
             string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
             if (!File.Exists(xdtPath))
             {
@@ -108,25 +117,24 @@ namespace Kudu.Core.SiteExtensions
                 xdtTemplate.Save(xdtPath);
             }
 
-            return SiteExtensionInfo.ConvertFrom(package);
+            return ConvertPackageToSiteExtensionInfo(package);
         }
 
         public bool UninstallExtension(string id)
         {
-            IPackage package = _localRepository.FindPackage(id);
-            string directory = GetInstallationDirectory(package);
-            FileSystemHelpers.DeleteDirectorySafe(directory);
-            return FileSystemHelpers.DirectoryExists(directory);
+            string installationDirectory = GetInstallationDirectory(id);
+            FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+            return !FileSystemHelpers.DirectoryExists(installationDirectory);
+        }
+
+        public string GetInstallationDirectory(string id)
+        {
+            return Path.Combine(_localRepository.Source, id);
         }
 
         private SiteExtensionInfo GetLatestInfo(string id)
         {
-            return SiteExtensionInfo.ConvertFrom(_remoteRepository.FindPackage(id));
-        }
-
-        private string GetInstallationDirectory(IPackageName package)
-        {
-            return _localRepository.Source + "\\" + package.Id + "." + package.Version;
+            return ConvertPackageToSiteExtensionInfo(_remoteRepository.FindPackage(id));
         }
 
         private static XElement CreateDefaultXdtTemplate(string id)
@@ -145,6 +153,35 @@ namespace Kudu.Core.SiteExtensions
                                new XAttribute(xdt + "Transform", "Insert"),
                                new XElement("virtualDirectory", new XAttribute("path", "/"),
                                    new XAttribute("physicalPath", "%XDT_EXTENSIONPATH%")))))));
+        }
+
+        public static SiteExtensionInfo ConvertPackageToSiteExtensionInfo(IPackage package)
+        {
+            return new SiteExtensionInfo
+            {
+                Id = package.Id,
+                Title = package.Title,
+                Description = package.Description,
+                Version = package.Version.ToString(),
+                ProjectUrl = package.ProjectUrl,
+                IconUrl = package.IconUrl,
+                LicenseUrl = package.LicenseUrl,
+                Authors = package.Authors,
+                PublishedDateTime = package.Published,
+                IsLatestVersion = package.IsLatestVersion,
+                DownloadCount = package.DownloadCount,
+                LatestInfo = null,
+                AppPath = null,
+                InstalledDateTime = null,
+            };
+        }
+
+        public SiteExtensionInfo ConvertLocalPackageToSiteExtensionInfo(IPackage package)
+        {
+            SiteExtensionInfo info = ConvertPackageToSiteExtensionInfo(package);
+            IPackage latestPackage = _remoteRepository.FindPackage(info.Id);
+            info.IsLatestVersion = package.Version == latestPackage.Version;
+            return info;
         }
     }
 }

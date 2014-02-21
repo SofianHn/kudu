@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using NuGet;
 
 namespace Kudu.Contracts.SiteExtensions
 {
@@ -90,27 +88,6 @@ namespace Kudu.Contracts.SiteExtensions
         {
             get;
             set;
-        }
-
-        public static SiteExtensionInfo ConvertFrom(IPackage package)
-        {
-            return new SiteExtensionInfo
-            {
-                Id = package.Id,
-                Title = package.Title,
-                Description = package.Description,
-                Version = package.Version.ToString(),
-                ProjectUrl = package.ProjectUrl,
-                IconUrl = package.IconUrl,
-                LicenseUrl = package.LicenseUrl,
-                Authors = package.Authors,
-                PublishedDateTime = package.Published,
-                IsLatestVersion = package.IsLatestVersion,
-                DownloadCount = package.DownloadCount,
-                LatestInfo = null,
-                AppPath = null,
-                InstalledDateTime = null,
-            };
         }
     }
 }
