@@ -16,10 +16,6 @@
             height: 300px;
         }
 
-        .fixed-height {
-            
-        }
-
         .button-bottom-left {
             position: absolute;
             width: 70px;
@@ -31,6 +27,12 @@
             position: absolute;
             right: 20px;
             bottom: 25px;
+        }
+
+        .long-text {
+            height: 50%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
 }
@@ -73,7 +75,7 @@
                                 </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
-                            <p data-bind="text: Description"></p>
+                            <p class="long-text" data-bind="text: Description"></p>
                             <p>
                                 <a class="btn btn-primary button-bottom-left" role="button" data-bind="click: $parent.install">Install</a>
                             </p>
@@ -98,7 +100,7 @@
                                 </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
-                            <p data-bind="text: Description"></p>
+                            <p class="long-text" data-bind="text: Description"></p>
                             <p>
                                 <a class="btn btn-primary button-bottom-left" role="button" data-bind="attr: {href : '/' + Id}">Lauch</a>
                                 <a class="btn btn-primary button-bottom-right" role="button" data-bind="click: $parent.remove">Remove</a>
@@ -124,7 +126,7 @@
                                 </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
-                            <p data-bind="text: Description"></p>
+                            <p class="long-text" data-bind="text: Description"></p>
                             <p>
                                 <a class="btn btn-primary button-bottom-left" role="button" data-bind="click: $parent.update">Update</a>
                             </p>
@@ -148,18 +150,20 @@
                 <h4 class="modal-title" id="detailsModalLabel" data-bind="text: Title"></h4>
             </div>
             <div class="modal-body" data-bind="with: detailedSiteExtension">
-                <strong>Authors</strong>
-                <p data-bind="text: Authors"></p>
+                <strong>ID</strong>
+                <p data-bind="text: Id"></p>
                 <strong>Version</strong>
                 <p data-bind="text: Version"></p>
-                <strong>Description</strong>
-                <p data-bind="text: Description"></p>
+                <strong>Download Count</strong>
+                <p data-bind="text: DownloadCount"></p>
+                <strong>Authors</strong>
+                <p data-bind="text: Authors"></p>
                 <strong>License</strong>
                 <p data-bind="text: LicenseUrl"></p>
                 <strong>Published Time</strong>
                 <p data-bind="text: PublishedDateTime"></p>
-                <strong>ID</strong>
-                <p data-bind="text: Id"></p>
+                <strong>Description</strong>
+                <p data-bind="text: Description"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
