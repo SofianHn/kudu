@@ -199,7 +199,7 @@ namespace Kudu.Core.SiteExtensions
                 PublishedDateTime = package.Published,
                 IsLatestVersion = package.IsLatestVersion,
                 DownloadCount = package.DownloadCount,
-                AppPath = null,
+                LocalPath = null,
                 InstalledDateTime = null,
             };
         }
@@ -207,6 +207,10 @@ namespace Kudu.Core.SiteExtensions
         public SiteExtensionInfo ConvertLocalPackageToSiteExtensionInfo(IPackage package, bool checkLatest = true)
         {
             SiteExtensionInfo info = ConvertPackageToSiteExtensionInfo(package);
+
+            info.LocalPath = GetInstallationDirectory(info.Id);
+
+            info.InstalledDateTime = FileSystemHelpers.GetLastWriteTimeUtc(info.LocalPath);
 
             if (checkLatest)
             {

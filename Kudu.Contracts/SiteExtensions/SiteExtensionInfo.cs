@@ -72,7 +72,7 @@ namespace Kudu.Contracts.SiteExtensions
             set;
         }
 
-        public string AppPath
+        public string LocalPath
         {
             get;
             set;
