@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using Kudu.Contracts.SiteExtensions;
+using Kudu.Contracts.Tracing;
 using Kudu.Core.Infrastructure;
+using Kudu.Core.Tracing;
 using NuGet;
 
 namespace Kudu.Core.SiteExtensions
@@ -14,10 +16,12 @@ namespace Kudu.Core.SiteExtensions
         private static readonly Uri _remoteSource = new Uri("http://siteextensions.azurewebsites.net/api/v2/");
         private readonly IPackageRepository _remoteRepository = new DataServicePackageRepository(_remoteSource);
         private readonly IPackageRepository _localRepository;
+        private readonly ITraceFactory _traceFactory;
 
-        public SiteExtensionManager(IEnvironment environment)
+        public SiteExtensionManager(IEnvironment environment, ITraceFactory traceFactory)
         {
             _localRepository = new LocalPackageRepository(environment.RootPath + "\\SiteExtensions");
+            _traceFactory = traceFactory;
         }
 
         public IEnumerable<SiteExtensionInfo> GetRemoteExtensions(string filter, bool allowPrereleaseVersions = false)
@@ -93,50 +97,65 @@ namespace Kudu.Core.SiteExtensions
             // Directory where _localRepository.AddPackage would use.
             string installationDirectory = GetInstallationDirectory(id);
 
-            bool success = OperationManager.Attempt(() => InstallExtension(package, installationDirectory));
+            bool success = InstallExtension(package, installationDirectory);
 
             if (success)
             {
                 return ConvertPackageToSiteExtensionInfo(package);
             }
 
-            FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
             return null;
         }
 
         public bool InstallExtension(IPackage package, string installationDirectory)
         {
-            if (FileSystemHelpers.DirectoryExists(installationDirectory))
+            try
             {
-                FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
-            }
-
-            foreach (var file in package.GetContentFiles())
-            {
-                // It is necessary to place applicationHost.xdt under site extension root.
-                string contentFilePath = file.Path.Substring("content/".Length);
-                var fullPath = Path.Combine(installationDirectory, contentFilePath);
-                FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
-                using (Stream writeStream = FileSystemHelpers.OpenWrite(fullPath), readStream = file.GetStream())
+                if (FileSystemHelpers.DirectoryExists(installationDirectory))
                 {
-                    readStream.CopyTo(writeStream);
+                    FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+                }
+
+                foreach (var file in package.GetContentFiles())
+                {
+                    // It is necessary to place applicationHost.xdt under site extension root.
+                    string contentFilePath = file.Path.Substring("content/".Length);
+                    var fullPath = Path.Combine(installationDirectory, contentFilePath);
+                    FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
+                    using (Stream writeStream = FileSystemHelpers.OpenWrite(fullPath), readStream = file.GetStream())
+                    {
+                        // ReSharper disable AccessToDisposedClosure
+                        OperationManager.Attempt(() => readStream.CopyTo(writeStream));
+                        // ReSharper restore  AccessToDisposedClosure
+                    }
+                }
+
+                // If there is no xdt file, generate default.
+                string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
+                if (!File.Exists(xdtPath))
+                {
+                    var xdtTemplate = CreateDefaultXdtTemplate(package.Id);
+                    OperationManager.Attempt(() => xdtTemplate.Save(xdtPath);
+                }
+
+                // Copy nupkg file for package list/lookup
+                FileSystemHelpers.CreateDirectory(installationDirectory);
+                var packageFilePath = Path.Combine(installationDirectory,
+                    String.Format("{0}.{1}.nupkg", package.Id, package.Version));
+                using (
+                    Stream readStream = package.GetStream(), writeStream = FileSystemHelpers.OpenWrite(packageFilePath))
+                {
+                    // ReSharper disable AccessToDisposedClosure
+                    OperationManager.Attempt(() => readStream.CopyTo(writeStream));
+                    // ReSharper restore  AccessToDisposedClosure
                 }
             }
-
-            // If there is no xdt file, generate default.
-            string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
-            if (!File.Exists(xdtPath))
+            catch (Exception ex)
             {
-                var xdtTemplate = CreateDefaultXdtTemplate(package.Id);
-                xdtTemplate.Save(xdtPath);
-            }
-
-            // Copy nupkg file for package list/lookup
-            FileSystemHelpers.CreateDirectory(installationDirectory);
-            var packageFilePath = Path.Combine(installationDirectory, String.Format("{0}.{1}.nupkg", package.Id, package.Version));
-            using (Stream readStream = package.GetStream(), writeStream = FileSystemHelpers.OpenWrite(packageFilePath))
-            {
-                readStream.CopyTo(writeStream);
+                var tracer = _traceFactory.GetTracer();
+                tracer.TraceError(ex);
+                FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
+                return false;
             }
 
             return true;
