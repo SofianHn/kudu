@@ -29,7 +29,7 @@
             bottom: 25px;
         }
 
-        .long-text {
+        .text-description {
             height: 50%;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -80,7 +80,7 @@
                                 </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
-                            <p class="long-text" data-bind="text: Description"></p>
+                            <p class="text-description" data-bind="text: Description"></p>
                             <p>
                                 <a class="btn btn-primary button-bottom-left" role="button" data-bind="click: $parent.install">Install</a>
                             </p>
@@ -105,7 +105,7 @@
                                 </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
-                            <p class="long-text" data-bind="text: Description"></p>
+                            <p class="text-description" data-bind="text: Description"></p>
                             <p>
                                 <a class="btn btn-primary button-bottom-left" role="button" data-bind="attr: {href : '/' + Id, target : '_blank'}">Lauch</a>
                                 <a class="btn btn-primary button-bottom-right" role="button" data-bind="click: $parent.remove">Remove</a>
@@ -131,7 +131,7 @@
                                 </div>
                             </a>
                             <h4 class="" data-bind="text: Title"></h4>
-                            <p class="long-text" data-bind="text: Description"></p>
+                            <p class="text-description" data-bind="text: Description"></p>
                             <p>
                                 <a class="btn btn-primary button-bottom-left" role="button" data-bind="click: $parent.update">Update</a>
                             </p>
@@ -188,6 +188,12 @@
     // UI
     var tiles = $("#tile1, #tile2, #tile3");
     tiles.height(tiles.width() * 1.6);
+
+    $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
+        window.location.hash = $(e.target).attr("href").substr(1);
+    });
+
+    $('#tabHeadings a[href="' + window.location.hash + '"]').tab('show');
 
     function sendRestartRequest() {
         $.ajax({
