@@ -47,7 +47,7 @@ namespace Kudu.Core.SiteExtensions
         public SiteExtensionInfo GetRemoteExtension(string id, string version)
         {
             var semanticVersion = version == null ? null : new SemanticVersion(version);
-            var package = _remoteRepository.FindPackage(id, semanticVersion);
+            IPackage package = _remoteRepository.FindPackage(id, semanticVersion);
             if (package == null)
             {
                 return null;
@@ -58,16 +58,14 @@ namespace Kudu.Core.SiteExtensions
 
         public IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool checkLatest = true)
         {
-            var siteExtensionInfoList = _localRepository.Search(filter, false)
+            return _localRepository.Search(filter, false)
                                                         .AsEnumerable()
                                                         .Select(info => ConvertLocalPackageToSiteExtensionInfo(info, checkLatest));
-
-            return siteExtensionInfoList;
         }
 
         public SiteExtensionInfo GetLocalExtension(string id, bool checkLatest = true)
         {
-            var package = _localRepository.FindPackage(id);
+            IPackage package = _localRepository.FindPackage(id);
             if (package == null)
             {
                 return null;
@@ -116,17 +114,15 @@ namespace Kudu.Core.SiteExtensions
                     FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
                 }
 
-                foreach (var file in package.GetContentFiles())
+                foreach (IPackageFile file in package.GetContentFiles())
                 {
                     // It is necessary to place applicationHost.xdt under site extension root.
                     string contentFilePath = file.Path.Substring("content/".Length);
-                    var fullPath = Path.Combine(installationDirectory, contentFilePath);
+                    string fullPath = Path.Combine(installationDirectory, contentFilePath);
                     FileSystemHelpers.CreateDirectory(Path.GetDirectoryName(fullPath));
                     using (Stream writeStream = FileSystemHelpers.OpenWrite(fullPath), readStream = file.GetStream())
                     {
-                        // ReSharper disable AccessToDisposedClosure
                         OperationManager.Attempt(() => readStream.CopyTo(writeStream));
-                        // ReSharper restore  AccessToDisposedClosure
                     }
                 }
 
@@ -134,25 +130,23 @@ namespace Kudu.Core.SiteExtensions
                 string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
                 if (!File.Exists(xdtPath))
                 {
-                    var xdtTemplate = CreateDefaultXdtTemplate(package.Id);
-                    OperationManager.Attempt(() => xdtTemplate.Save(xdtPath);
+                    XElement xdtTemplate = CreateDefaultXdtTemplate(package.Id);
+                    OperationManager.Attempt(() => xdtTemplate.Save(xdtPath));
                 }
 
                 // Copy nupkg file for package list/lookup
                 FileSystemHelpers.CreateDirectory(installationDirectory);
-                var packageFilePath = Path.Combine(installationDirectory,
+                string packageFilePath = Path.Combine(installationDirectory,
                     String.Format("{0}.{1}.nupkg", package.Id, package.Version));
                 using (
                     Stream readStream = package.GetStream(), writeStream = FileSystemHelpers.OpenWrite(packageFilePath))
                 {
-                    // ReSharper disable AccessToDisposedClosure
                     OperationManager.Attempt(() => readStream.CopyTo(writeStream));
-                    // ReSharper restore  AccessToDisposedClosure
                 }
             }
             catch (Exception ex)
             {
-                var tracer = _traceFactory.GetTracer();
+                ITracer tracer = _traceFactory.GetTracer();
                 tracer.TraceError(ex);
                 FileSystemHelpers.DeleteDirectorySafe(installationDirectory);
                 return false;
