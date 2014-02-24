@@ -17,7 +17,7 @@ namespace Kudu.Core.SiteExtensions
         private readonly IPackageRepository _remoteRepository = new DataServicePackageRepository(_remoteSource);
         private readonly IPackageRepository _localRepository;
         private readonly ITraceFactory _traceFactory;
-
+        
         public SiteExtensionManager(IEnvironment environment, ITraceFactory traceFactory)
         {
             _localRepository = new LocalPackageRepository(environment.RootPath + "\\SiteExtensions");
@@ -128,10 +128,10 @@ namespace Kudu.Core.SiteExtensions
 
                 // If there is no xdt file, generate default.
                 string xdtPath = Path.Combine(installationDirectory, "applicationHost.xdt");
-                if (!File.Exists(xdtPath))
+                if (!FileSystemHelpers.FileExists(xdtPath))
                 {
-                    XElement xdtTemplate = CreateDefaultXdtTemplate(package.Id);
-                    OperationManager.Attempt(() => xdtTemplate.Save(xdtPath));
+                    string xdtContent = CreateDefaultXdtFile(package.Id);
+                    OperationManager.Attempt(() => FileSystemHelpers.WriteAllText(xdtPath, xdtContent));
                 }
 
                 // Copy nupkg file for package list/lookup
@@ -179,22 +179,21 @@ namespace Kudu.Core.SiteExtensions
             return Path.Combine(_localRepository.Source, id);
         }
 
-        private static XElement CreateDefaultXdtTemplate(string id)
+        private static string CreateDefaultXdtFile(string id)
         {
-            XNamespace xdt = "http://schemas.microsoft.com/XML-Document-Transform";
-
-            return new XElement("configuration", new XAttribute(XNamespace.Xmlns + "xdt", xdt),
-                new XElement("system.applicationHost",
-                    new XElement("sites",
-                        new XElement("site", new XAttribute("name", "%XDT_SCMSITENAME%"), new XAttribute(xdt + "Locator", "Match(name)"),
-                            new XElement("application", new XAttribute("path", "/" + id),
-                                new XAttribute(xdt + "Locator", "Match(path)"),
-                                new XAttribute(xdt + "Transform", "Remove")),
-                           new XElement("application", new XAttribute("path", "/" + id),
-                               new XAttribute("applicationPool", "%XDT_APPPOOLNAME%"),
-                               new XAttribute(xdt + "Transform", "Insert"),
-                               new XElement("virtualDirectory", new XAttribute("path", "/"),
-                                   new XAttribute("physicalPath", "%XDT_EXTENSIONPATH%")))))));
+            return String.Format("<?xml version=\"1.0\" encoding=\"utf-8\"" + @"?>
+<configuration " + "xmlns:xdt=\"http://schemas.microsoft.com/XML-Document-Transform\"" + @">
+    <system.applicationHost>
+        <sites>
+            <site " + "name=\"%XDT_SCMSITENAME%\" xdt:Locator=\"Match(name)\"" + @" >
+                <application " + "path=\"/{0}\" xdt:Locator=\"Match(path)\" xdt:Transform=\"Remove\"" + @"/>
+                <application " + "path=\"/{0}\" applicationPool=\"%XDT_APPPOOLNAME%\" xdt:Transform=\"Insert\"" + @">
+                    <virtualDirectory " + "path=\"/\" physicalPath=\"%XDT_EXTENSIONPATH%\"" + @"/>
+                </application>
+            </site>
+        </sites>
+    </system.applicationHost>
+<configuration>", id);
         }
 
         public static SiteExtensionInfo ConvertPackageToSiteExtensionInfo(IPackage package)
