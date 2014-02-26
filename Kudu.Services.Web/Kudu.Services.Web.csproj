@@ -116,6 +116,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Content\Images\ajax-loader.gif" />
     <Content Include="Content\Scripts\jquery.signalR-2.0.1.min.js" />
     <Content Include="Content\Scripts\KuduExec.js" />
     <Content Include="Content\Styles\FileBrowser.css" />
