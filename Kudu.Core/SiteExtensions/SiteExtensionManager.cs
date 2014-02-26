@@ -46,7 +46,7 @@ namespace Kudu.Core.SiteExtensions
                            .Select(ConvertPackageToSiteExtensionInfo);
         }
 
-        public SiteExtensionInfo GetRemoteExtension(string id, string version)
+        public SiteExtensionInfo GetRemoteExtension(string id, string version = null)
         {
             var semanticVersion = version == null ? null : new SemanticVersion(version);
             IPackage package = _remoteRepository.FindPackage(id, semanticVersion);
@@ -61,8 +61,8 @@ namespace Kudu.Core.SiteExtensions
         public IEnumerable<SiteExtensionInfo> GetLocalExtensions(string filter, bool checkLatest = true)
         {
             return _localRepository.Search(filter, false)
-                                                        .AsEnumerable()
-                                                        .Select(info => ConvertLocalPackageToSiteExtensionInfo(info, checkLatest));
+                .AsEnumerable()
+                .Select(info => ConvertLocalPackageToSiteExtensionInfo(info, checkLatest));
         }
 
         public SiteExtensionInfo GetLocalExtension(string id, bool checkLatest = true)
@@ -78,16 +78,11 @@ namespace Kudu.Core.SiteExtensions
 
         public SiteExtensionInfo InstallExtension(SiteExtensionInfo info)
         {
-            return info == null ? null : InstallExtension(info.Id);
+            return InstallExtension(info.Id);
         }
 
         public SiteExtensionInfo InstallExtension(string id)
         {
-            if (String.IsNullOrEmpty(id))
-            {
-                return null;
-            }
-
             IPackage package = _remoteRepository.FindPackage(id);
             if (package == null)
             {
@@ -159,25 +154,20 @@ namespace Kudu.Core.SiteExtensions
 
         public bool UninstallExtension(string id)
         {
-            if (String.IsNullOrEmpty(id))
-            {
-                return true;
-            }
-
             string installationDirectory = GetInstallationDirectory(id);
 
+            if (!FileSystemHelpers.DirectoryExists(installationDirectory))
+            {
+                throw new DirectoryNotFoundException(installationDirectory);
+            }
+
             OperationManager.Attempt(() => FileSystemHelpers.DeleteDirectorySafe(installationDirectory));
-            
+
             return !FileSystemHelpers.DirectoryExists(installationDirectory);
         }
 
         public string GetInstallationDirectory(string id)
         {
-            if (String.IsNullOrEmpty(id))
-            {
-                return null;
-            }
-
             return Path.Combine(_localRepository.Source, id);
         }
 

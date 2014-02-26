@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Web.Http;
 using Kudu.Contracts.SiteExtensions;
 
@@ -24,7 +26,12 @@ namespace Kudu.Services.SiteExtensions
         [HttpGet]
         public SiteExtensionInfo GetRemoteExtension(string id, string version = null)
         {
-            return _manager.GetRemoteExtension(id, version);
+            SiteExtensionInfo extension = _manager.GetRemoteExtension(id, version);
+            if (extension == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, id));
+            }
+            return extension;
         }
 
         [HttpGet]
@@ -36,19 +43,36 @@ namespace Kudu.Services.SiteExtensions
         [HttpGet]
         public SiteExtensionInfo GetLocalExtension(string id, bool latestInfo = false)
         {
-            return _manager.GetLocalExtension(id, latestInfo);
+            SiteExtensionInfo extension = _manager.GetLocalExtension(id, latestInfo);
+            if (extension == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, id));
+            }
+            return extension;
         }
 
         [HttpPost]
         public SiteExtensionInfo InstallExtension(SiteExtensionInfo info)
         {
-            return _manager.InstallExtension(info);
+            SiteExtensionInfo extension = _manager.InstallExtension(info);
+            if (extension == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, info.ToString()));
+            }
+            return extension;
         }
 
         [HttpDelete]
         public bool UninstallExtension(string id)
         {
-            return _manager.UninstallExtension(id);
+            try
+            {
+                return _manager.UninstallExtension(id);
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, ex));
+            }
         }
     }
 }
