@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Kudu.Contracts.Settings;
 using Kudu.Contracts.SiteExtensions;
 using Kudu.Contracts.Tracing;
 using Kudu.Core.Infrastructure;
@@ -12,15 +13,17 @@ namespace Kudu.Core.SiteExtensions
 {
     public class SiteExtensionManager : ISiteExtensionManager
     {
-        private static readonly Uri _remoteSource = new Uri("http://siteextensions.azurewebsites.net/api/v2/");
-        private readonly IPackageRepository _remoteRepository = new DataServicePackageRepository(_remoteSource);
+        private readonly IPackageRepository _remoteRepository;
         private readonly IPackageRepository _localRepository;
         private readonly ITraceFactory _traceFactory;
-        
-        public SiteExtensionManager(IEnvironment environment, ITraceFactory traceFactory)
+
+        public SiteExtensionManager(IEnvironment environment, IDeploymentSettingsManager settings, ITraceFactory traceFactory)
         {
             _localRepository = new LocalPackageRepository(environment.RootPath + "\\SiteExtensions");
             _traceFactory = traceFactory;
+
+            var remoteSource = new Uri(settings.GetSiteExtensionRemoteUrl());
+            _remoteRepository = new DataServicePackageRepository(remoteSource);
         }
 
         public IEnumerable<SiteExtensionInfo> GetRemoteExtensions(string filter, bool allowPrereleaseVersions = false)
